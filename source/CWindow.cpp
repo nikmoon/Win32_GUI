@@ -10,7 +10,7 @@
 namespace Win32_GUI_NMSP
 {
 
-CWindow::CWindow(CWindowClass &_class, DWORD _style, DWORD _exstyle, LPCTSTR _wname, HWND _owner, HMENU _menu, HINSTANCE _hinst,
+CWindow::CWindow(const CWindowClass &_class, DWORD _style, DWORD _exstyle, LPCTSTR _wname, HWND _owner, HMENU _menu, HINSTANCE _hinst,
 		LPVOID _pdata, int _x, int _y, int _cx, int _cy)
 {
 	// пробуем создать окно
@@ -47,50 +47,19 @@ CWindow::CWindow(CWindowClass &_class, DWORD _style, DWORD _exstyle, LPCTSTR _wn
 
 CWindow::~CWindow()
 {
-	// если окно не было уничтожено
+	// если окно WinAPI не уничтожено
 	if (::IsWindow(m_hWnd))
 	{
-		// пытаемся уничтожить окно
-		if (!::DestroyWindow(m_hWnd))
-		{
-			throw ::GetLastError();		// генерируем исключение
-		}
+		throw "Call Destroy() before deleting CWindow object";	// генерируем исключение
 	}
 }
 
 
-const CWindow &
-CWindow::AddChildWindow(CWindowClass &_class, DWORD _style, DWORD _exstyle, LPCTSTR _wname, HMENU _menu, LPVOID _pdata,
-		int _x, int _y, int _cx, int _cy)
-{
-	// создаем окно
-	CWindow *pChild = new CWindow(_class, _style, _exstyle, _wname, g_hWnd(), _menu, g_hInstance(), _pdata, _x, _y, _cx, _cy);
-
-	// добавляем созданное окно в список дочерних окон
-	m_ChildWindows.push_back(pChild);
-
-	return *pChild;
-}
-
-
 void
-CWindow::RemoveChildWindow(CWindow &_window)
+CWindow::Destroy()
 {
-	delete &_window;
-	m_ChildWindows.remove(&_window);
+	// окно должно существовать
+	::DestroyWindow(m_hWnd);
 }
-
-
-void
-CWindow::ClearChildList()
-{
-	// уничтожаем все дочерние окна
-	while (!m_ChildWindows.empty())
-	{
-		delete m_ChildWindows.back();
-		m_ChildWindows.pop_back();
-	}
-}
-
 
 } /* namespace Win32_GUI_NMSP */

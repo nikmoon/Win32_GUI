@@ -9,9 +9,7 @@
 #define CWINDOW_H_
 
 #include "CWindowClass.h"
-#include <list>
 
-using std::list;
 
 namespace Win32_GUI_NMSP
 {
@@ -19,7 +17,7 @@ namespace Win32_GUI_NMSP
 class CWindow
 {
 private:
-	CWindowClass *m_pWndClass;
+	const CWindowClass *m_pWndClass;
 	HWND m_hWnd;
 	HWND m_Owner;
 	DWORD m_Style;
@@ -29,15 +27,8 @@ private:
 	HINSTANCE m_hInstance;
 	LPVOID m_pData;
 
-protected:
-	list < CWindow * > m_ChildWindows;
-	const CWindow &AddChildWindow(CWindowClass &_class, DWORD _style, DWORD _exstyle, LPCTSTR _wname, HMENU _menu, LPVOID _pdata,
-			int _x, int _y, int _cx, int _cy);
-	void RemoveChildWindow(CWindow &_window);
-	void ClearChildList();
-
 public:
-	CWindow(CWindowClass &_class, DWORD _style, DWORD _exstyle, LPCTSTR _wname, HWND _owner, HMENU _menu, HINSTANCE _hinst,
+	CWindow(const CWindowClass &_class, DWORD _style, DWORD _exstyle, LPCTSTR _wname, HWND _owner, HMENU _menu, HINSTANCE _hinst,
 			LPVOID _pdata, int _x, int _y, int _cx, int _cy);
 	virtual ~CWindow();
 
@@ -51,8 +42,9 @@ public:
 	HINSTANCE g_hInstance() const { return m_hInstance; };
 	const LPVOID g_pData() const { return m_pData; };
 
-	void Show() { ::ShowWindow(m_hWnd, SW_SHOW); };
-	void Hide() { ::ShowWindow(m_hWnd, SW_HIDE); };
+	virtual void Show() { ::ShowWindow(m_hWnd, SW_SHOW); };
+	virtual void Hide() { ::ShowWindow(m_hWnd, SW_HIDE); };
+	virtual void Destroy();
 
 };
 
