@@ -32,6 +32,17 @@ public:
 			LPVOID _pdata, int _x, int _y, int _cx, int _cy);
 	virtual ~CWindow();
 
+	virtual LRESULT OnEvent(UINT _msg, WPARAM _wp, LPARAM _lp);
+	virtual LRESULT OnEvent_Default(UINT _msg, WPARAM _wp, LPARAM _lp);
+	virtual LRESULT OnEvent_Destroy(UINT _msg, WPARAM _wp, LPARAM _lp);
+
+	static LRESULT CALLBACK BasicWndProc(HWND _hwnd, UINT _msg, WPARAM _wp, LPARAM _lp);
+	static WNDPROC SetWindowProc(HWND _hwnd, WNDPROC _wproc);
+	static WNDPROC GetWindowProc(HWND _hwnd);
+	static CWindow * SetWindowPtr(HWND _hwnd, CWindow * _pwin);
+	static CWindow * GetWindowPtr(HWND _hwnd);
+
+
 	const CWindowClass &g_WndClass() const { return *m_pWndClass; };
 	HWND g_hWnd() const { return m_hWnd; };
 	HWND g_hOwner() const { return m_Owner; };
@@ -46,6 +57,8 @@ public:
 	virtual void Hide() { ::ShowWindow(m_hWnd, SW_HIDE); };
 	virtual void Destroy();
 
+private:
+	WNDPROC m_DefWindowProc;
 };
 
 } /* namespace Win32_GUI_NMSP */
