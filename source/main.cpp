@@ -8,48 +8,32 @@
 #include <windows.h>
 #include "CWindowClass.h"
 #include "CWindow.h"
-#include "CBasicWindow.h"
 
 using namespace Win32_GUI_NMSP;
 
 
-class CMainWindowClass : public CWindowClass
+class CMainWindow : public CWindow
 {
-public:
-	CMainWindowClass(HINSTANCE _hinst) : CWindowClass
-	(
-		CS_HREDRAW|CS_VREDRAW,
-		&CBasicWindow::BasicWndProc,
-		0, 0,
-		_hinst,
-		::LoadIcon(NULL, IDI_APPLICATION),
-		::LoadCursor(NULL, IDC_ARROW),
-		(HBRUSH)(COLOR_BACKGROUND+1),
-		NULL,
-		"MainWindowClass",
-		::LoadIcon(NULL, IDI_APPLICATION)
-	) {};
-};
-
-
-class CMainWindow : public CBasicWindow
-{
+private:
+	CWindow * pButton;
 
 public:
-	CMainWindow(CWindowClass &_class, HINSTANCE _hinst) : CBasicWindow
-	(
-		_class,
+	CMainWindow(HINSTANCE _hinst, LPCTSTR _wname) : CWindow(
 		WS_OVERLAPPEDWINDOW,
 		0,
-		"Main Window",
-		NULL,
-		NULL,
-		_hinst,
-		NULL,
-		100, 100, 800, 600
-	) {};
+		_wname,
+		NULL, NULL,
+		_hinst, NULL,
+		100, 100, 800, 600)
+	{
+		pButton = new CChildWindow(WS_VISIBLE, 0, "Жамкни плиз", *this,
+				101, _hinst, NULL, 10, 10, 150, 60, &CChildWindow::g_SysClassPool().g_ClassButton());
+	};
 
-	~CMainWindow() {};
+	~CMainWindow()
+	{
+		delete pButton;
+	};
 
 	virtual LRESULT OnEvent_Destroy(UINT _msg, WPARAM _wp, LPARAM _lp)
 	{
@@ -62,11 +46,12 @@ public:
 
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR CmdLine, int nCmdShow)
 {
-	CWindowClass * pMainWindowClass = new CMainWindowClass(hInstance);
-	CWindow * pMainWindow = new CMainWindow(*pMainWindowClass, hInstance);
+	CWindow * pMainWindow = new CMainWindow(hInstance, "Main Window");
+	CWindow * pWindow2 = new CMainWindow(hInstance, "Other Window");
 
 
 	pMainWindow->Show();
+	pWindow2->Show();
 
 	MSG msg;
 	BOOL bRes;
@@ -82,8 +67,8 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR CmdLine
 		::DispatchMessage(&msg);
 	}
 
-	delete pMainWindow;
-	delete pMainWindowClass;
+	delete pWindow2->Destroy_IfExists();
+	delete pMainWindow->Destroy_IfExists();
 
 	return msg.wParam;
 }

@@ -26,26 +26,57 @@ LPCTSTR SysClassNames[] =
 
 
 
+
 //
-//	Конструктор для системных классов
+//	Конструктор для системных оконных классов
 //
-CWindowClass::CWindowClass(ESysClassCode _code)
+CSystemWindowClass::CSystemWindowClass(UINT _esccode)
 {
+	// проверим переданный код
+	if (_esccode >= ESCC_SYSCLASSCOUNT)
+	{
+		throw -1;
+	}
+
 	// попробуем получить информацию о системном оконном классе
-	if (!::GetClassInfoEx(NULL, SysClassNames[_code], &m_ClassInfo))
+	if (!::GetClassInfoEx(NULL, SysClassNames[_esccode], &m_ClassInfo))
 	{
 		throw ::GetLastError();		// генерируем исключение
 	}
+	m_ClassCode = _esccode;
+}
 
-	// класс зарегистрирован системой
-	m_IsSystem = true;
+
+CSystemWindowClassPool::CSystemWindowClassPool()
+{
+	// выделяем память под массив системных классов
+	m_SysClassPool = new CSystemWindowClass*[ESCC_SYSCLASSCOUNT];
+
+	// создаем экземпляры каждого системного класса
+	for(int i = 0; i < ESCC_SYSCLASSCOUNT; i++)
+	{
+		m_SysClassPool[i] = new CSystemWindowClass(i);
+	}
+}
+
+
+CSystemWindowClassPool::~CSystemWindowClassPool()
+{
+	// удаляем экземпляры системных классов
+	for(int i = 0; i < ESCC_SYSCLASSCOUNT; i++)
+	{
+		delete m_SysClassPool[i];
+	}
+
+	// освобождаем память массива
+	delete [] m_SysClassPool;
 }
 
 
 //
-//	Основной конструктор
+//	Конструктор для пользовательских оконных классов
 //
-CWindowClass::CWindowClass(UINT _clstyle, WNDPROC _wproc, int _clsext, int _wndext, HINSTANCE _hinst, HICON _hicon,
+CUserWindowClass::CUserWindowClass(UINT _clstyle, WNDPROC _wproc, int _clsext, int _wndext, HINSTANCE _hinst, HICON _hicon,
 	HCURSOR _hcur, HBRUSH _hbr, LPCTSTR _menuname, LPCTSTR _clname, HICON _hiconsm)
 {
 	// подготовка к регистрации оконного класса
@@ -67,24 +98,16 @@ CWindowClass::CWindowClass(UINT _clstyle, WNDPROC _wproc, int _clsext, int _wnde
 	{
 		throw ::GetLastError();		// генерируем исключение
 	}
-
-	// класс зарегистрирован пользователем, не системой
-	m_IsSystem = false;
 }
 
 
-CWindowClass::~CWindowClass()
+CUserWindowClass::~CUserWindowClass()
 {
-	// если оконный класс не является системным
-	if (!m_IsSystem)
+	// пробуем отменить регистрацию класса
+	if (!::UnregisterClass(m_ClassInfo.lpszClassName,m_ClassInfo.hInstance))
 	{
-		// пробуем отменить регистрацию класса
-		if (!::UnregisterClass(m_ClassInfo.lpszClassName,m_ClassInfo.hInstance))
-		{
-			throw ::GetLastError();		// генерируем исключение
-		}
+		throw ::GetLastError();		// генерируем исключение
 	}
 }
-
 
 } /* namespace Win32_GUI_NMSP */

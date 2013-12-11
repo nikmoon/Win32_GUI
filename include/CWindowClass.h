@@ -10,7 +10,6 @@
 
 #include <windows.h>
 #include <commctrl.h>
-#include <vector>
 
 namespace Win32_GUI_NMSP
 {
@@ -19,43 +18,35 @@ namespace Win32_GUI_NMSP
 //
 //	Коды системных оконных классов
 //
-enum ESysClassCode
-{
-	ESCC_BUTTON		= 0,
-	ESCC_COMBOBOX	= 1,
-	ESCC_EDIT		= 2,
-	ESCC_LISTBOX	= 3,
-	ESCC_SCROLLBAR	= 4,
-	ESCC_STATIC		= 5
-};
-
+#define		ESCC_BUTTON			0
+#define		ESCC_COMBOBOX		(ESCC_BUTTON + 1)
+#define		ESCC_EDIT			(ESCC_COMBOBOX + 1)
+#define		ESCC_LISTBOX		(ESCC_EDIT + 1)
+#define		ESCC_SCROLLBAR		(ESCC_LISTBOX + 1)
+#define		ESCC_STATIC			(ESCC_SCROLLBAR + 1)
+#define		ESCC_SYSCLASSCOUNT	(ESCC_STATIC + 1)
 
 //	Имена системных классов
 extern LPCTSTR SysClassNames[];
 
 
-/*		-----------------------------------------
- *		Оконный класс
- *		-----------------------------------------
+/*		--------------------------------------------
+ *		Базовый класс для оконных классов WinAPI
+ *		--------------------------------------------
  *
- *		Создает обертку для оконного класса WinAPI.
- *		Для классов, зарегистрированных системой, можно создавать сколько угодно экземпляров.
- *		Для собственных классов можно создавать лишь по одному классу на каждое имя класса.
- *
- *		В случае возникновения ошибок генерируется исключение int со значением равным ::GetLastError()
+ *		Должен наследоваться.
  */
 class CWindowClass
 {
-private:
+protected:
 	WNDCLASSEX m_ClassInfo;
-	bool m_IsSystem;
+
+	CWindowClass() {};
 
 public:
-	CWindowClass(ESysClassCode _code);
-	CWindowClass(UINT _clstyle, WNDPROC _wproc, int _clsext, int _wndext, HINSTANCE _hinst, HICON _hicon,
-		HCURSOR _hcur, HBRUSH _hbr, LPCTSTR _menuname, LPCTSTR _clname, HICON _hiconsm);
-	virtual ~CWindowClass();
+	virtual ~CWindowClass() {};
 
+public:
 	const WNDCLASSEX &g_ClassInfo() const { return m_ClassInfo; };
 	UINT g_Style() const { return m_ClassInfo.style; };
 	WNDPROC g_Proc() const { return m_ClassInfo.lpfnWndProc; };
@@ -67,6 +58,68 @@ public:
 	LPCTSTR g_MenuName() const { return m_ClassInfo.lpszMenuName; };
 	LPCTSTR g_ClassName() const { return m_ClassInfo.lpszClassName; };
 };
+
+
+/*
+ *		-------------------------------------
+ *		Системный оконный класс
+ *		-------------------------------------
+ */
+class CSystemWindowClass : public CWindowClass
+{
+private:
+	UINT m_ClassCode;
+
+public:
+	CSystemWindowClass(UINT _esccode);
+	virtual ~CSystemWindowClass() {};
+};
+
+
+/*
+ * 		-------------------------------------
+ *		Пул системных оконных классов
+ *		-------------------------------------
+*/
+class CSystemWindowClassPool
+{
+private:
+	CSystemWindowClass ** m_SysClassPool;
+
+	const CSystemWindowClass &GetSysClass(UINT _code) const { return *(m_SysClassPool[_code]); };
+
+public:
+	CSystemWindowClassPool();
+	virtual ~CSystemWindowClassPool();
+
+	const CSystemWindowClass &g_ClassButton() const { return GetSysClass(ESCC_BUTTON); };
+	const CSystemWindowClass &g_ClassCombobox() const { return GetSysClass(ESCC_COMBOBOX); };
+	const CSystemWindowClass &g_ClassEdit() const { return GetSysClass(ESCC_EDIT); };
+	const CSystemWindowClass &g_ClassListbox() const { return GetSysClass(ESCC_LISTBOX); };
+	const CSystemWindowClass &g_ClassScrollbar() const { return GetSysClass(ESCC_SCROLLBAR); };
+	const CSystemWindowClass &g_ClassStatic() const { return GetSysClass(ESCC_STATIC); };
+};
+
+
+
+/*
+ *		------------------------------------------------
+ *		Оконный класс, определенный пользователем
+ *		------------------------------------------------
+ */
+class CUserWindowClass : public CWindowClass
+{
+public:
+	CUserWindowClass(UINT _clstyle, WNDPROC _wproc, int _clsext, int _wndext, HINSTANCE _hinst, HICON _hicon,
+		HCURSOR _hcur, HBRUSH _hbr, LPCTSTR _menuname, LPCTSTR _clname, HICON _hiconsm);
+	virtual ~CUserWindowClass();
+};
+
+
+
+
+
+
 
 } /* namespace Win32_GUI_NMSP */
 

@@ -10,13 +10,20 @@
 namespace Win32_GUI_NMSP
 {
 
-CWindow::CWindow(const CWindowClass &_class, DWORD _style, DWORD _exstyle, LPCTSTR _wname, HWND _owner, HMENU _menu, HINSTANCE _hinst,
-		LPVOID _pdata, int _x, int _y, int _cx, int _cy)
+CWindow::CWindow(DWORD _style, DWORD _exstyle, LPCTSTR _wname, HWND _owner, HMENU _menu, HINSTANCE _hinst, LPVOID _pdata,
+		int _x, int _y, int _cx, int _cy, const CWindowClass * _class)
 {
+	// если оконный класс не задан
+	if (_class == NULL)
+	{
+		// будем использовать дефолтный оконный класс
+		_class = g_DefWindowClass(_hinst);
+	}
+
 	// пробуем создать окно
 	m_hWnd = ::CreateWindowEx(
 		_exstyle,
-		_class.g_ClassName(),
+		_class->g_ClassName(),
 		_wname,
 		_style,
 		_x, _y, _cx, _cy,
@@ -33,7 +40,7 @@ CWindow::CWindow(const CWindowClass &_class, DWORD _style, DWORD _exstyle, LPCTS
 	}
 
 	// инициализируем пол€ экземпл€ра
-	m_pWndClass = &_class;
+	m_pWndClass = _class;
 	m_Owner = _owner;
 	m_Style = _style;
 	m_ExStyle = _exstyle;
@@ -60,8 +67,13 @@ CWindow::CWindow(const CWindowClass &_class, DWORD _style, DWORD _exstyle, LPCTS
 		m_DefWindowProc = ::DefWindowProc;
 	}
 
+	// если задан дефолтный оконный класс
+	if (m_pWndClass == sm_pDefWindowClass)
+	{
+		// увеличиваем счетчик экземпл€ров класса с дефолтным оконным классом
+		sm_DefClassWndCount++;
+	}
 }
-
 
 
 CWindow::~CWindow()
@@ -69,6 +81,7 @@ CWindow::~CWindow()
 	// если окно WinAPI не уничтожено
 	if (::IsWindow(m_hWnd))
 	{
+		::MessageBox(m_hWnd, "Call Destroy() before deleting CWindow object", "¬нимание", MB_OK);
 		throw "Call Destroy() before deleting CWindow object";	// генерируем исключение
 	}
 
@@ -82,6 +95,55 @@ CWindow::~CWindow()
 
 	// отмен€ем св€зывание окна и объекта окна
 	SetWindowPtr(m_hWnd, NULL);
+
+	// если экземпл€р имел дефолтный оконный класс
+	if (m_pWndClass == sm_pDefWindowClass)
+	{
+		// уменьшаем счетчик экземпл€ров
+		sm_DefClassWndCount--;
+
+		// если таких окон больше нет
+		if (sm_DefClassWndCount == 0)
+		{
+			// удал€ем дефолтный оконный класс
+			delete sm_pDefWindowClass;
+			sm_pDefWindowClass = NULL;
+		}
+	}
+}
+
+
+// »спользуемый по умолчанию оконный класс
+CUserWindowClass *
+CWindow::sm_pDefWindowClass = NULL;
+
+
+// —четчик экземпл€ров окон с дефолтным оконным классом
+UINT
+CWindow::sm_DefClassWndCount = 0;
+
+
+// ¬озвращаем дефолтный оконный класс
+const CUserWindowClass *
+CWindow::g_DefWindowClass(HINSTANCE _hinst)
+{
+	// если класс еще не зарегистрирован
+	if (sm_pDefWindowClass == NULL)
+	{
+		// регистрируем и создаем экземпл€р
+		sm_pDefWindowClass = CreateWndClass(
+				CS_HREDRAW|CS_VREDRAW,
+				0, 0,
+				_hinst,
+				::LoadIcon(NULL, IDI_APPLICATION),
+				::LoadCursor(NULL, IDC_ARROW),
+				(HBRUSH)(COLOR_BACKGROUND+1),
+				NULL,
+				"DefWindowClassName",
+				::LoadIcon(NULL, IDI_APPLICATION));
+	}
+
+	return sm_pDefWindowClass;
 }
 
 
@@ -108,6 +170,26 @@ CWindow::BasicWndProc(HWND _hwnd, UINT _msg, WPARAM _wp, LPARAM _lp)
 	return ev_result;
 }
 
+
+// —оздание оконного класса с дефолтной оконной процедурой
+CUserWindowClass *
+CWindow::CreateWndClass(UINT _clstyle, int _clsext, int _wndext, HINSTANCE _hinst, HICON _hicon,
+		HCURSOR _hcur, HBRUSH _hbr, LPCTSTR _menuname, LPCTSTR _clname, HICON _hiconsm)
+{
+	return new CUserWindowClass(
+			_clstyle,
+			&BasicWndProc,
+			_clsext,
+			_wndext,
+			_hinst,
+			_hicon,
+			_hcur,
+			_hbr,
+			_menuname,
+			_clname,
+			_hiconsm);
+}
+
 WNDPROC
 CWindow::SetWindowProc(HWND _hwnd, WNDPROC _wproc)
 {
@@ -124,7 +206,7 @@ CWindow::GetWindowProc(HWND _hwnd)
 CWindow *
 CWindow::SetWindowPtr(HWND _hwnd, CWindow * _pwin)
 {
-	return (CBasicWindow*)::SetWindowLongPtr(_hwnd, GWLP_USERDATA, (LONG_PTR)_pwin);
+	return (CWindow*)::SetWindowLongPtr(_hwnd, GWLP_USERDATA, (LONG_PTR)_pwin);
 }
 
 
@@ -138,9 +220,28 @@ LRESULT
 CWindow::OnEvent(UINT _msg, WPARAM _wp, LPARAM _lp)
 {
 	LRESULT ev_result;
+	CWindow * wchild;
 
 	switch (_msg)
 	{
+		case WM_COMMAND:
+			if (_lp != 0)	// сообщение от владеемого окна
+			{
+				wchild = GetWindowPtr((HWND)_lp);
+				if (!wchild)
+				{
+					throw -1;
+				}
+				ev_result = OnEvent_ChildCommand(*wchild, _msg, _wp, _lp);
+			}
+			else
+			{
+				ev_result = OnEvent_Default(_msg, _wp, _lp);
+			}
+			break;
+		case WM_NOTIFY:
+			ev_result = OnEvent_ChildNotify(_msg, _wp, _lp);
+			break;
 		case WM_DESTROY:
 			ev_result = OnEvent_Destroy(_msg, _wp, _lp);
 			break;
@@ -166,12 +267,64 @@ CWindow::OnEvent_Destroy(UINT _msg, WPARAM _wp, LPARAM _lp)
 	return OnEvent_Default(_msg, _wp, _lp);
 }
 
-
-void
-CWindow::Destroy()
+LRESULT
+CWindow::OnEvent_ChildCommand(CWindow &_child, UINT _msg, WPARAM _wp, LPARAM _lp)
 {
-	// окно должно существовать
-	::DestroyWindow(m_hWnd);
+	return OnEvent_Default(_msg, _wp, _lp);
+}
+
+LRESULT
+CWindow::OnEvent_ChildNotify(UINT _msg, WPARAM _wp, LPARAM _lp)
+{
+	return OnEvent_Default(_msg, _wp, _lp);
+}
+
+
+
+
+// ѕул системных оконных классов
+CSystemWindowClassPool *
+CChildWindow::sm_pSysClassPool = NULL;
+
+// —четчик экземпл€ров CChildWindow и наследуемых
+UINT
+CChildWindow::sm_ChildWndCount = 0;
+
+
+CChildWindow::CChildWindow(DWORD _style, DWORD _exstyle, LPCTSTR _wname, const CWindow &_owner, UINT _id, HINSTANCE _hinst,
+		LPVOID _pdata, int _x, int _y, int _cx, int _cy, const CWindowClass * _class)
+		: CWindow((_style | WS_CHILD) & (~WS_POPUP), _exstyle, _wname, _owner.g_hWnd(), (HMENU)_id, _hinst, _pdata, _x, _y, _cx, _cy, _class)
+{
+	// увеличиваем счетчик экземпл€ров
+	sm_ChildWndCount++;
+}
+
+
+CChildWindow::~CChildWindow()
+{
+	// уменьшаем счетчик экземпл€ров
+	sm_ChildWndCount--;
+
+	// если экземпл€ров больше не осталось
+	if (sm_ChildWndCount == 0)
+	{
+		// удал€ем пул системных оконных классов
+		delete sm_pSysClassPool;
+		sm_pSysClassPool = NULL;
+	}
+}
+
+
+const CSystemWindowClassPool &
+CChildWindow::g_SysClassPool()
+{
+	// если пул системных оконных классов еще не создан
+	if (sm_pSysClassPool == NULL)
+	{
+		sm_pSysClassPool = new CSystemWindowClassPool();
+	}
+
+	return *sm_pSysClassPool;
 }
 
 } /* namespace Win32_GUI_NMSP */
