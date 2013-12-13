@@ -47,31 +47,6 @@ CSystemWindowClass::CSystemWindowClass(UINT _esccode)
 }
 
 
-CSystemWindowClassPool::CSystemWindowClassPool()
-{
-	// выдел€ем пам€ть под массив системных классов
-	m_SysClassPool = new CSystemWindowClass*[ESCC_SYSCLASSCOUNT];
-
-	// создаем экземпл€ры каждого системного класса
-	for(int i = 0; i < ESCC_SYSCLASSCOUNT; i++)
-	{
-		m_SysClassPool[i] = new CSystemWindowClass(i);
-	}
-}
-
-
-CSystemWindowClassPool::~CSystemWindowClassPool()
-{
-	// удал€ем экземпл€ры системных классов
-	for(int i = 0; i < ESCC_SYSCLASSCOUNT; i++)
-	{
-		delete m_SysClassPool[i];
-	}
-
-	// освобождаем пам€ть массива
-	delete [] m_SysClassPool;
-}
-
 
 //
 //	 онструктор дл€ пользовательских оконных классов
@@ -79,10 +54,43 @@ CSystemWindowClassPool::~CSystemWindowClassPool()
 CUserWindowClass::CUserWindowClass(UINT _clstyle, WNDPROC _wproc, int _clsext, int _wndext, HINSTANCE _hinst, HICON _hicon,
 	HCURSOR _hcur, HBRUSH _hbr, LPCTSTR _menuname, LPCTSTR _clname, HICON _hiconsm)
 {
+	RegisterWindowClass(_clstyle, _wproc, _clsext, _wndext, _hinst, _hicon, _hcur, _hbr, _menuname, _clname, _hiconsm);
+}
+
+
+CUserWindowClass::CUserWindowClass(HINSTANCE _hinst, LPCTSTR _clname)
+{
+	RegisterWindowClass(
+		CS_HREDRAW | CS_VREDRAW,
+		NULL,
+		0, 0,
+		_hinst,
+		::LoadIcon(NULL,IDI_APPLICATION),
+		::LoadCursor(NULL,IDC_ARROW),
+		(HBRUSH)(COLOR_BACKGROUND+1),
+		NULL,
+		_clname,
+		::LoadIcon(NULL, IDI_APPLICATION));
+}
+
+
+CUserWindowClass::~CUserWindowClass()
+{
+	// пробуем отменить регистрацию класса
+	if (!::UnregisterClass(m_ClassInfo.lpszClassName,m_ClassInfo.hInstance))
+	{
+		throw ::GetLastError();		// генерируем исключение
+	}
+}
+
+void
+CUserWindowClass::RegisterWindowClass(UINT _clstyle, WNDPROC _wproc, int _clsext, int _wndext, HINSTANCE _hinst, HICON _hicon,
+		HCURSOR _hcur, HBRUSH _hbr, LPCTSTR _menuname, LPCTSTR _clname, HICON _hiconsm)
+{
 	// подготовка к регистрации оконного класса
 	m_ClassInfo.cbSize = sizeof(WNDCLASSEX);
 	m_ClassInfo.style = _clstyle;
-	m_ClassInfo.lpfnWndProc = _wproc;
+	m_ClassInfo.lpfnWndProc = (_wproc == NULL) ? &::DefWindowProc : _wproc;
 	m_ClassInfo.cbClsExtra = _clsext;
 	m_ClassInfo.cbWndExtra = _wndext;
 	m_ClassInfo.hInstance = _hinst;
@@ -95,16 +103,6 @@ CUserWindowClass::CUserWindowClass(UINT _clstyle, WNDPROC _wproc, int _clsext, i
 
 	// пробуем зарегистрировать класс
 	if (!::RegisterClassEx(&m_ClassInfo))
-	{
-		throw ::GetLastError();		// генерируем исключение
-	}
-}
-
-
-CUserWindowClass::~CUserWindowClass()
-{
-	// пробуем отменить регистрацию класса
-	if (!::UnregisterClass(m_ClassInfo.lpszClassName,m_ClassInfo.hInstance))
 	{
 		throw ::GetLastError();		// генерируем исключение
 	}

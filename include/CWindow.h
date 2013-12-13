@@ -29,13 +29,15 @@ private:
 
 	WNDPROC m_DefWindowProc;
 
-	static UINT sm_DefClassWndCount;
-	static CUserWindowClass * sm_pDefWindowClass;
-	static const CUserWindowClass * g_DefWindowClass(HINSTANCE _hinst);
+	void InitEventSystem(const CWindowClass &_class);
+	void DoneEventSystem();
+
+protected:
+	static LRESULT CALLBACK EventSystemWndProc(HWND _hwnd, UINT _msg, WPARAM _wp, LPARAM _lp);
 
 public:
-	CWindow(DWORD _style, DWORD _exstyle, LPCTSTR _wname, HWND _owner, HMENU _menu, HINSTANCE _hinst, LPVOID _pdata,
-			int _x, int _y, int _cx, int _cy, const CWindowClass *_class = NULL);
+	CWindow(const CWindowClass &_class, DWORD _style, DWORD _exstyle, LPCTSTR _wname, HWND _owner, HMENU _menu, HINSTANCE _hinst,
+			LPVOID _pdata, int _x, int _y, int _cx, int _cy);
 
 	virtual ~CWindow();
 
@@ -44,10 +46,6 @@ public:
 	virtual LRESULT OnEvent_Destroy(UINT _msg, WPARAM _wp, LPARAM _lp);
 	virtual LRESULT OnEvent_ChildCommand(CWindow &_child, UINT _msg, WPARAM _wp, LPARAM _lp);
 	virtual LRESULT OnEvent_ChildNotify(UINT _msg, WPARAM _wp, LPARAM _lp);
-
-	static LRESULT CALLBACK BasicWndProc(HWND _hwnd, UINT _msg, WPARAM _wp, LPARAM _lp);
-	static CUserWindowClass * CreateWndClass(UINT _clstyle, int _clsext, int _wndext, HINSTANCE _hinst, HICON _hicon,
-		HCURSOR _hcur, HBRUSH _hbr, LPCTSTR _menuname, LPCTSTR _clname, HICON _hiconsm);
 
 	static WNDPROC SetWindowProc(HWND _hwnd, WNDPROC _wproc);
 	static WNDPROC GetWindowProc(HWND _hwnd);
@@ -71,22 +69,11 @@ public:
 	virtual CWindow * Destroy() { ::DestroyWindow(m_hWnd); return this; };
 	virtual CWindow * Destroy_IfExists() { if (IsExists()) Destroy(); return this; };
 	virtual const bool IsExists() const { return ::IsWindow(m_hWnd); };
+
+	virtual int GetActionCode(UINT _msg, WPARAM _wp, LPARAM _lp);
 };
 
 
-
-class CChildWindow : public CWindow
-{
-private:
-	static CSystemWindowClassPool * sm_pSysClassPool;
-	static UINT sm_ChildWndCount;
-public:
-	CChildWindow(DWORD _style, DWORD _exstyle, LPCTSTR _wname, const CWindow &_owner, UINT _id,
-			HINSTANCE _hinst,	LPVOID _pdata, int _x, int _y, int _cx, int _cy, const CWindowClass *_class);
-	virtual ~CChildWindow();
-
-	static const CSystemWindowClassPool &g_SysClassPool();
-};
 
 } /* namespace Win32_GUI_NMSP */
 

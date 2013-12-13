@@ -46,8 +46,6 @@ protected:
 public:
 	virtual ~CWindowClass() {};
 
-public:
-	const WNDCLASSEX &g_ClassInfo() const { return m_ClassInfo; };
 	UINT g_Style() const { return m_ClassInfo.style; };
 	WNDPROC g_Proc() const { return m_ClassInfo.lpfnWndProc; };
 	HINSTANCE g_hInst() const { return m_ClassInfo.hInstance; };
@@ -73,31 +71,16 @@ private:
 public:
 	CSystemWindowClass(UINT _esccode);
 	virtual ~CSystemWindowClass() {};
-};
 
+	UINT g_ClassCode() const { return m_ClassCode; };
 
-/*
- * 		-------------------------------------
- *		Пул системных оконных классов
- *		-------------------------------------
-*/
-class CSystemWindowClassPool
-{
-private:
-	CSystemWindowClass ** m_SysClassPool;
+	static CSystemWindowClass * g_SysClass_Button() { return new CSystemWindowClass(ESCC_BUTTON); };
+	static CSystemWindowClass * g_SysClass_ComboBox() { return new CSystemWindowClass(ESCC_COMBOBOX); };
+	static CSystemWindowClass * g_SysClass_Edit() { return new CSystemWindowClass(ESCC_EDIT); };
+	static CSystemWindowClass * g_SysClass_ListBox() { return new CSystemWindowClass(ESCC_LISTBOX); };
+	static CSystemWindowClass * g_SysClass_ScrollBar() { return new CSystemWindowClass(ESCC_SCROLLBAR); };
+	static CSystemWindowClass * g_SysClass_Static() { return new CSystemWindowClass(ESCC_STATIC); };
 
-	const CSystemWindowClass &GetSysClass(UINT _code) const { return *(m_SysClassPool[_code]); };
-
-public:
-	CSystemWindowClassPool();
-	virtual ~CSystemWindowClassPool();
-
-	const CSystemWindowClass &g_ClassButton() const { return GetSysClass(ESCC_BUTTON); };
-	const CSystemWindowClass &g_ClassCombobox() const { return GetSysClass(ESCC_COMBOBOX); };
-	const CSystemWindowClass &g_ClassEdit() const { return GetSysClass(ESCC_EDIT); };
-	const CSystemWindowClass &g_ClassListbox() const { return GetSysClass(ESCC_LISTBOX); };
-	const CSystemWindowClass &g_ClassScrollbar() const { return GetSysClass(ESCC_SCROLLBAR); };
-	const CSystemWindowClass &g_ClassStatic() const { return GetSysClass(ESCC_STATIC); };
 };
 
 
@@ -109,9 +92,15 @@ public:
  */
 class CUserWindowClass : public CWindowClass
 {
+private:
+	void RegisterWindowClass(UINT _clstyle, WNDPROC _wproc, int _clsext, int _wndext, HINSTANCE _hinst, HICON _hicon,
+			HCURSOR _hcur, HBRUSH _hbr, LPCTSTR _menuname, LPCTSTR _clname, HICON _hiconsm);
+
 public:
 	CUserWindowClass(UINT _clstyle, WNDPROC _wproc, int _clsext, int _wndext, HINSTANCE _hinst, HICON _hicon,
 		HCURSOR _hcur, HBRUSH _hbr, LPCTSTR _menuname, LPCTSTR _clname, HICON _hiconsm);
+	CUserWindowClass(HINSTANCE _hinst, LPCTSTR _clname);
+
 	virtual ~CUserWindowClass();
 };
 
